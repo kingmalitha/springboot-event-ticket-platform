@@ -8,13 +8,6 @@ services:
     environment:
       POSTGRES_PASSWORD: password
 
-    # Adminer database management service (Visual interface for databases)
-  adminer:
-    image: adminer:latest
-    restart: always
-    ports:
-      - "8888:8080"
-
   # Keycloak service for identity and access management
   keycloak:
     image: quay.io/keycloak/keycloak:latest
@@ -28,6 +21,44 @@ services:
     command:
       - start-dev
       - --db=dev-file
+
+  # MONITORING AND OBSERVABILITY
+  lgtm:
+    image: grafana/otel-lgtm
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "3000:3000" # Grafana
+
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config.yaml:/etc/promtail/config.yml
+    depends_on:
+      - lgtm
+
+  # MAIN APPLICATION SERVICE
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/event-ticket-platform
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=springboot-event-ticket-platform
+    depends_on:
+      - db
+      - keycloak
+      - lgtm
+    restart: unless-stopped
 
 volumes:
     keycloak_data:

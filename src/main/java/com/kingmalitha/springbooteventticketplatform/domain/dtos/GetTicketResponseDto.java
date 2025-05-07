@@ -1,15 +1,15 @@
 package com.kingmalitha.springbooteventticketplatform.domain.dtos;
 
 import com.kingmalitha.springbooteventticketplatform.domain.entities.TicketStatusEnum;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
-@RequiredArgsConstructor
+@AllArgsConstructor
 @NoArgsConstructor
 public class GetTicketResponseDto {
     private UUID id;
